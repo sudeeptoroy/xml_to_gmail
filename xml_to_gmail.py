@@ -21,45 +21,47 @@ SCOPES = ['https://www.googleapis.com/auth/gmail.readonly', 'https://www.googlea
 
 def parse_xls(service, filename):
     wb = open_workbook(filename)
-    mail_to = ""
-    mail_from = ""
-    mail_subject = ""
+    mail_from = "me"
+    header_row = 2
     for s in wb.sheets():
-        #print ('Sheet:',s.name)
+        print ('Sheet:',s.name)
 	# skip Sheet
-        if s.name == "Export Summary":
-            continue
-        if s.name != "Test":
+        if s.name != "electrical":
             continue
         header = []
-        entire_sheet_out = ""
+        #entire_sheet_out = ""
         for row in range(s.nrows):
+            if row < header_row:
+                continue
             values = []
             for col in range(s.ncols):
                 values.append(s.cell(row,col).value)
-    	    # header starts at
-            if row <= 2:
+    	    # read header
+            if row == header_row:
                 header = values
                 continue
-            email = values[3]
-            name = values[2]
+
+            name = values[1]
+            email_to = values[2]
             # skip rows with no email
-            if email == "":
+            if email_to == "":
+                print ("skipping empty line")
                 continue
             # format key n value
-            res = [str(i) + ": " + str(j) for i, j in zip(header, values)]
-            row_out  = "Hi " + name + ",\n\n"
-            row_out += "your message here.\n"
-            row_out += '\n'.join(res) + "\n"
+            #res = [str(i) + ": " + str(j) for i, j in zip(header, values)]
+            row_out  = "<p>Hi " + name + ",</p>"
+            row_out += "<p>Regards,<br>NAME<br><br></p>"
+
+            #row_out += '\n'.join(res) + "\n"
             #print (row_out)
-            entire_sheet_out += row_out
-#            mail_to = email
-            message = create_message(mail_from, mail_to, mail_subject, row_out)
+            #entire_sheet_out += row_out
+            mail_subject = "your subject"
+            message = create_message(mail_from, email_to, mail_subject, row_out)
             result = send_message(service, mail_from, message)
+            print (result)
             # rate limits
             time.sleep(1)
-            print (result)
-            print ("mail sent")
+            print ("mail sent to " + email_to)
         #message = create_message(mail_from, mail_to, mail_subject, entire_sheet_out)
         #result = send_message(service, mail_from, message)
         #time.sleep(1)
@@ -108,15 +110,17 @@ def create_message(sender, to, subject, message_text):
   Returns:
     An object containing a base64url encoded email object.
   """
-  message = MIMEText(message_text)
+  #message = MIMEText(message_text)
   # for html encoded mail
-  #message = MIMEText(message_text,'html')
+  message = MIMEText(message_text,'html')
   message['to'] = to
   message['from'] = sender
   message['subject'] = subject
   # does not work with python3 so its commented
   #return {'raw': base64.urlsafe_b64encode(message.as_string())}
-  print ("mailing details: from:" + sender + " to: " + to + "\n")
+  # debug
+  #print ("mailing details: from:" + sender + " to: " + to + "sub: " + subject + " \n")
+  #print ("msg: " + message_text)
   return {'raw': base64.urlsafe_b64encode(message.as_string().encode()).decode()}
 
 def send_message(service, user_id, message):
